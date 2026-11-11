@@ -1,0 +1,534 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EEF3F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C1514" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Foglio Partita">
+<title>Foglio Partita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+  /* Layout: set tabs stay pinned on top; court, substitutions and time out stack on a phone and sit side by side from 680px. */
+  :root {
+    --bg: #EEF3F2;
+    --card: #FFFFFF;
+    --fg: #10292A;
+    --muted: #5A7170;
+    --line: #C3D2D0;
+    --accent: #0E8A81;
+    --accent-fg: #FFFFFF;
+    --tint: #DDF1EE;
+    --warn: #B4531A;
+    --edge: #16A39A;
+    --court: #F59B50;
+    --court-line: #FFFFFF;
+    --court-ink: #5B2A06;
+    --disc: #FFFFFF;
+    --disc-ink: #17211F;
+    --net: #0C3B3A;
+    --net-line: #2F8580;
+    --tape: #F4F7F6;
+    --post: #142323;
+    --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C1514;
+      --card: #142120;
+      --fg: #E4EFED;
+      --muted: #8CA6A3;
+      --line: #2A3D3B;
+      --accent: #3CC4B8;
+      --accent-fg: #06201D;
+      --tint: #193533;
+      --warn: #F0A06A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1514;
+    --card: #142120;
+    --fg: #E4EFED;
+    --muted: #8CA6A3;
+    --line: #2A3D3B;
+    --accent: #3CC4B8;
+    --accent-fg: #06201D;
+    --tint: #193533;
+    --warn: #F0A06A;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.4 var(--body);
+    padding-block: 12px 28px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    background: var(--bg);
+    z-index: 10;
+  }
+  .wrap { max-width: 880px; margin-inline: auto; }
+
+  .name {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    margin-bottom: 4px;
+    padding: 0 2px;
+    border: 0;
+    border-bottom: 2px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg);
+    font: 700 28px/1 var(--display);
+    letter-spacing: .01em;
+  }
+  .name::placeholder { color: var(--muted); opacity: .6; }
+  .name:focus-visible { outline: none; border-bottom-color: var(--accent); }
+
+  .tabs {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--bg);
+    padding-block: 6px 8px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .tab {
+    position: relative;
+    height: 46px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--fg);
+    font: 700 22px/1 var(--display);
+    cursor: pointer;
+  }
+  .tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .tab.has::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .7;
+  }
+  .tab:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .layout { display: grid; gap: 22px; margin-top: 10px; }
+  .stack { display: grid; gap: 22px; min-width: 0; align-content: start; }
+  @media (min-width: 680px) {
+    .layout { grid-template-columns: 320px minmax(0, 1fr); gap: 36px; align-items: start; }
+    .court { margin-inline: 0; }
+  }
+
+  h2 { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: .01em; }
+  .hrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .count { font: 600 14px/1 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .count.full { color: var(--warn); }
+
+  /* Court */
+  .court {
+    width: min(100%, 320px);
+    aspect-ratio: 11 / 14;
+    margin-inline: auto;
+    background: var(--edge);
+    padding: 9px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 3px;
+  }
+  .net {
+    position: relative;
+    flex: none;
+    height: 26px;
+    border-top: 4px solid var(--tape);
+    background:
+      repeating-linear-gradient(0deg, var(--net-line) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(90deg, var(--net-line) 0 1px, transparent 1px 5px),
+      var(--net);
+  }
+  .net::before, .net::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    bottom: -2px;
+    width: 6px;
+    background: var(--post);
+  }
+  .net::before { left: -2px; }
+  .net::after { right: -2px; }
+  .floor {
+    position: relative;
+    flex: 1;
+    margin-top: 6px;
+    background: var(--court);
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+  }
+  .floor::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 2px dashed var(--court-line);
+    pointer-events: none;
+  }
+  .line { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; }
+  .slot { display: grid; justify-items: center; gap: 4px; }
+  .slot span { font: 700 12px/1 var(--body); color: var(--court-ink); opacity: .75; }
+  .disc {
+    width: min(76px, 80%);
+    aspect-ratio: 1;
+    height: auto;
+    padding: 0;
+    border: 2px solid var(--disc-ink);
+    border-radius: 50%;
+    background: var(--disc);
+    color: var(--disc-ink);
+    font: 700 32px/1 var(--display);
+    text-align: center;
+  }
+  .disc:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* Sheets */
+  .sheet {
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .sheet.to { max-width: 260px; }
+  .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; }
+  .sheet.to .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hd span {
+    background: var(--card);
+    padding: 9px 10px;
+    text-align: center;
+    font: 600 13px/1.2 var(--body);
+    color: var(--muted);
+  }
+  input.cell {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: var(--card);
+    color: var(--fg);
+    font: 500 17px/1 var(--body);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  input.cell::placeholder { color: var(--muted); opacity: .45; }
+  input.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .row.on input.cell { background: var(--tint); }
+
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 26px; }
+  .btn {
+    min-height: 46px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font: 600 15px/1.2 var(--body);
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .btn.armed { color: var(--warn); border-color: var(--warn); }
+  .note { min-height: 20px; margin: 10px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <input class="name" id="name" type="text" maxlength="60" autocomplete="off" placeholder="Nome partita" aria-label="Nome partita">
+  <nav class="tabs" id="tabs" aria-label="Set"></nav>
+
+  <div class="layout">
+    <section>
+      <div class="hrow"><h2 id="setTitle">1° Set</h2></div>
+      <div class="court">
+        <div class="net"></div>
+        <div class="floor" id="floor"></div>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section>
+        <div class="hrow">
+          <h2>Sostituzioni</h2>
+          <span class="count" id="subCount">0/8</span>
+        </div>
+        <div class="sheet" id="subs">
+          <div class="row hd"><span>Esce</span><span>Entra</span><span>Punteggio</span></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="hrow">
+          <h2>Time out</h2>
+          <span class="count" id="toCount">0/2</span>
+        </div>
+        <div class="sheet to">
+          <div class="row" id="to"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn primary" id="export">Esporta</button>
+    <button type="button" class="btn" id="reset">Nuova partita</button>
+  </div>
+  <p class="note" id="note" role="status"></p>
+</main>
+
+<script>
+(function () {
+  var KEY = 'foglio-partita-v1';
+  var SETS = 3;
+  var ORDER = [3, 2, 1, 4, 5, 0]; /* campo: 4-3-2 in rete, 5-6-1 in fondo */
+
+  function blank() {
+    var subs = [];
+    for (var i = 0; i < 8; i++) subs.push({ o: '', i: '', p: '' });
+    return { lineup: ['', '', '', '', '', ''], subs: subs, to: ['', ''] };
+  }
+  function fresh() {
+    var sets = [];
+    for (var i = 0; i < SETS; i++) sets.push(blank());
+    return { name: '', cur: 0, sets: sets };
+  }
+  function valid(s) {
+    return s && Array.isArray(s.sets) && s.sets.length === SETS && typeof s.cur === 'number' &&
+      s.sets.every(function (x) {
+        return x && Array.isArray(x.lineup) && x.lineup.length === 6 &&
+          Array.isArray(x.subs) && x.subs.length === 8 && Array.isArray(x.to) && x.to.length === 2;
+      });
+  }
+
+  var S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!valid(S)) S = fresh();
+  if (typeof S.name !== 'string') S.name = '';
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+
+  /* build */
+  var tabs = '';
+  for (var n = 0; n < SETS; n++) tabs += '<button type="button" class="tab" data-set="' + n + '">' + (n + 1) + '°</button>';
+  $('tabs').innerHTML = tabs;
+
+  function slot(p) {
+    return '<label class="slot"><input class="disc" type="text" inputmode="numeric" maxlength="3" autocomplete="off" ' +
+      'data-k="l" data-i="' + p + '" aria-label="Posizione ' + (p + 1) + '"><span>' + (p + 1) + '</span></label>';
+  }
+  $('floor').innerHTML =
+    '<div class="line">' + ORDER.slice(0, 3).map(slot).join('') + '</div>' +
+    '<div class="line">' + ORDER.slice(3).map(slot).join('') + '</div>';
+
+  var rows = '';
+  for (var r = 0; r < 8; r++) {
+    rows += '<div class="row" data-r="' + r + '">' +
+      '<input class="cell" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-k="s" data-i="' + r + '" data-f="o" aria-label="Sostituzione ' + (r + 1) + ' esce">' +
+      '<input class="cell" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-k="s" data-i="' + r + '" data-f="i" aria-label="Sostituzione ' + (r + 1) + ' entra">' +
+      '<input class="cell" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="00-00" data-k="s" data-i="' + r + '" data-f="p" aria-label="Sostituzione ' + (r + 1) + ' punteggio">' +
+      '</div>';
+  }
+  $('subs').insertAdjacentHTML('beforeend', rows);
+
+  $('to').innerHTML = [0, 1].map(function (t) {
+    return '<input class="cell" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="00-00" data-k="t" data-i="' + t + '" aria-label="Time out ' + (t + 1) + ' punteggio">';
+  }).join('');
+
+  /* state -> DOM */
+  function cur() { return S.sets[S.cur]; }
+  function used(s) { return s.subs.filter(function (x) { return x.o || x.i; }).length; }
+  function filled(s) { return s.to.filter(Boolean).length; }
+  function has(s) { return used(s) > 0 || filled(s) > 0 || s.lineup.some(Boolean) || s.subs.some(function (x) { return x.p; }); }
+
+  function fill() {
+    var s = cur();
+    document.querySelectorAll('[data-k]').forEach(function (el) {
+      var i = +el.dataset.i, k = el.dataset.k;
+      el.value = k === 'l' ? s.lineup[i] : k === 's' ? s.subs[i][el.dataset.f] : s.to[i];
+    });
+  }
+
+  function paint() {
+    var s = cur();
+    $('setTitle').textContent = (S.cur + 1) + '° Set';
+    document.querySelectorAll('.tab').forEach(function (b, i) {
+      b.setAttribute('aria-pressed', i === S.cur ? 'true' : 'false');
+      b.classList.toggle('has', has(S.sets[i]));
+    });
+    var u = used(s), t = filled(s);
+    $('subCount').textContent = u + '/8';
+    $('subCount').classList.toggle('full', u >= 8);
+    $('toCount').textContent = t + '/2';
+    $('toCount').classList.toggle('full', t >= 2);
+    document.querySelectorAll('#subs .row[data-r]').forEach(function (row) {
+      var x = s.subs[+row.dataset.r];
+      row.classList.toggle('on', !!(x.o || x.i || x.p));
+    });
+  }
+
+  /* punteggio: 1512 diventa 15-12 */
+  function score(v) {
+    var m = v.match(/^(\d*)\D+(\d*)$/);
+    if (m) return m[1].slice(0, 2) + '-' + m[2].slice(0, 2);
+    var d = v.replace(/\D/g, '');
+    return d.length > 2 ? d.slice(0, 2) + '-' + d.slice(2, 4) : d;
+  }
+
+  /* events */
+  document.addEventListener('input', function (e) {
+    var d = e.target.dataset;
+    if (!d || !d.k) return;
+    var s = cur(), v = e.target.value;
+    if (d.f === 'p' || d.k === 't') { v = score(v); e.target.value = v; }
+    if (d.k === 'l') s.lineup[+d.i] = v;
+    else if (d.k === 's') s.subs[+d.i][d.f] = v;
+    else s.to[+d.i] = v;
+    save();
+    paint();
+  });
+
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('.tab');
+    if (!b) return;
+    S.cur = +b.dataset.set;
+    save();
+    fill();
+    paint();
+  });
+
+  var armed = false, timer;
+  $('reset').addEventListener('click', function () {
+    var btn = $('reset');
+    if (!armed) {
+      armed = true;
+      btn.classList.add('armed');
+      btn.textContent = 'Tocca ancora per cancellare tutto';
+      timer = setTimeout(disarm, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    S = fresh();
+    $('name').value = '';
+    save();
+    fill();
+    paint();
+    disarm();
+  });
+  function disarm() {
+    armed = false;
+    $('reset').classList.remove('armed');
+    $('reset').textContent = 'Nuova partita';
+  }
+
+  /* schermo acceso durante la partita, se il telefono lo consente */
+  function keepAwake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) keepAwake(); });
+
+  fill();
+  paint();
+
+  /* nome partita */
+  $('name').value = S.name;
+  $('name').addEventListener('input', function (e) { S.name = e.target.value; save(); });
+
+  /* esporta */
+  function report() {
+    var L = [S.name.trim() || 'Partita', new Date().toLocaleDateString('it-IT')];
+    var any = false;
+    S.sets.forEach(function (s, n) {
+      if (!has(s)) return;
+      any = true;
+      L.push('', (n + 1) + '° SET');
+      L.push('Formazione: ' + s.lineup.map(function (v, i) { return 'P' + (i + 1) + ' ' + (v || '-'); }).join(' · '));
+      L.push('Sostituzioni: ' + used(s) + '/8');
+      s.subs.forEach(function (x, i) {
+        if (!x.o && !x.i && !x.p) return;
+        L.push('  ' + (i + 1) + '. esce ' + (x.o || '-') + ', entra ' + (x.i || '-') + (x.p ? ' (' + x.p + ')' : ''));
+      });
+      var t = s.to.filter(Boolean);
+      L.push('Time out: ' + (t.length ? t.join(', ') : 'nessuno'));
+    });
+    if (!any) L.push('', 'Nessun dato inserito.');
+    return L.join('\n');
+  }
+
+  function fname() {
+    var d = new Date();
+    function p(x) { return (x < 10 ? '0' : '') + x; }
+    var slug = S.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'partita';
+    return slug + '-' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.txt';
+  }
+
+  var noteTimer;
+  function say(t) {
+    $('note').textContent = t;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { $('note').textContent = ''; }, 4000);
+  }
+  function copy(text) {
+    function fail() { say('Esportazione non disponibile qui.'); }
+    try { navigator.clipboard.writeText(text).then(function () { say('Copiato negli appunti.'); }, fail); } catch (e) { fail(); }
+  }
+
+  $('export').addEventListener('click', function () {
+    var text = report();
+    try {
+      var url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = fname();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      say('Esportato.');
+    } catch (e) { copy(text); }
+  });
+})();
+</script>
+</body>
+</html>
+
+</body></html>
